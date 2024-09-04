@@ -9,19 +9,20 @@ class GenericPopUp(tk.Toplevel):
         #self.geometry("300x150")
         self.on_save = on_save  # Function to call when saving
         self.var_list = {}
+        self.var_type = {}
 
         for param in parameters:
             name = param["name"]
 
             if param["type"] == "string":
                 var = tk.StringVar()
-            elif param["type"] == "int":
+            elif self._check_int_type(param["type"]):
                 var = tk.IntVar()
             else:
                 print("Unsupported type : %s"%(param["type"]))
                 return
             self.var_list[name] = var
-
+            self.var_type[name] = param["type"]
 
         for key, var in self.var_list.items():
             ttk.Label(self, text=key).pack(pady=5)
@@ -31,12 +32,34 @@ class GenericPopUp(tk.Toplevel):
         save_button = ttk.Button(self, text="Save", command=self.save_data)
         save_button.pack(pady=10)
 
+    def _check_int_type(self, type):
+        allowed_type = ["int", "addr32", "intHex"]
+        if type in allowed_type:
+            return True
+        return False
+
+    def _conv_addr32(self, value):
+        _val = "0x%08x"%(value)
+        return _val
+
+    def _conv_intHex(self, value):
+        _val = "0x%x"%(value)
+        return _val
+
     def save_data(self):
         data = {"Type" : self._type }
 
         for key, var in self.var_list.items():
             value = var.get()
-            data[key] = value
+            attr_name = "_conv_%s"%(self.var_type[key])
+            _final_val = None
+
+            if hasattr(self, attr_name):
+                converter = getattr(self, attr_name)
+                _final_val = converter(value)
+            else:
+                _final_val = value
+            data[key] = _final_val
 
         self.on_save(data)
         self.destroy()

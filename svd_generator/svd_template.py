@@ -7,7 +7,7 @@ class SvdTemplates:
                 "name" : "Name"
             },
             {
-                "type" : "int",
+                "type" : "addr32",
                 "name" : "baseAddress"
             },
             {
@@ -21,7 +21,7 @@ class SvdTemplates:
                 "name" : "Name"
             },
             {
-                "type" : "int",
+                "type" : "intHex",
                 "name" : "addressOffset"
             },
             {
@@ -61,6 +61,20 @@ class SvdTemplates:
                 "name" : "description"
             }
         ]
+        self.tmpl_derived = [
+            {
+                "type" : "string",
+                "name" : "Name"
+            },
+            {
+                "type" : "addr32",
+                "name" : "baseAddress"
+            },
+            {
+                "type" : "string",
+                "name" : "description"
+            }
+        ]
 
     def get_template(self, type):
         if type == "Device":
@@ -71,6 +85,8 @@ class SvdTemplates:
             return self.tmpl_field
         elif type == "Interrupt":
             return self.tmpl_interrupt
+        elif type == "Derived":
+            return self.tmpl_derived
         else:
             print("Error: Unhandled type %s"%(type))
 

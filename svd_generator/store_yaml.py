@@ -4,8 +4,8 @@ class SocYamlGenerator:
     def __init__(self, cpu_type):
         _cpu_path = self._get_cpu_svdpath(cpu_type)
         self.rawdata = {
-            "_svd" : _cpu_path,
-            "_add" : [
+            "cpu" : _cpu_path,
+            "devices" : [
             ]
         }
 
@@ -13,24 +13,20 @@ class SocYamlGenerator:
         return "arm_cm7.svd"
 
     def _get_fields(self, tree, _reg_id):
-        fields = {}
+        fields = []
 
         for _item_id in tree.get_children(_reg_id):
             if _item_id:
                 _item = tree.item(_item_id)
                 field_dict = yaml.safe_load(_item["values"][1])
                 _field = field_dict
-                del _field["Type"]
-                del _field["Name"]
 
-                name = _item["text"]
-                fields[name] = _field
+                fields.append(_field)
 
-        print(fields)
         return fields
 
     def _get_registers(self, tree, _device_id):
-        regs = {}
+        regs = []
 
         for _item_id in tree.get_children(_device_id):
             if _item_id:
@@ -40,18 +36,16 @@ class SocYamlGenerator:
                 reg_dict = yaml.safe_load(_item["values"][1])
                 fields = self._get_fields(tree, _item_id)
                 _reg = reg_dict
-                del _reg["Type"]
-                del _reg["Name"]
+
                 if len(fields):
                     _reg["fields"] = fields
 
-                name = _item["text"]
-                regs[name] = _reg
+                regs.append(_reg)
 
         return regs
 
     def _get_interrupts(self, tree, _device_id):
-        interrupts = {}
+        interrupts = []
 
         for _item_id in tree.get_children(_device_id):
             if _item_id:
@@ -60,16 +54,31 @@ class SocYamlGenerator:
                     continue
                 intp_dict = yaml.safe_load(_item["values"][1])
                 _interrupt = intp_dict
-                del _interrupt["Type"]
-                del _interrupt["Name"]
 
-                name = _item["text"]
-                interrupts[name] = _interrupt
+                interrupts.append(_interrupt)
 
         return interrupts
 
+    def _get_derived(self, tree, _device_id):
+        deriveds = []
+
+        for _item_id in tree.get_children(_device_id):
+            if _item_id:
+                _item = tree.item(_item_id)
+                if _item["values"][0] != "Derived":
+                    continue
+                intp_dict = yaml.safe_load(_item["values"][1])
+                interrupts = self._get_interrupts(tree, _item_id)
+                _derived = intp_dict
+                if len(interrupts):
+                    _derived["interrupts"] = interrupts
+
+                deriveds.append(_derived)
+
+        return deriveds
+
     def generate(self, tree):
-        devices = {}
+        devices = []
 
         for _item_id in tree.get_children(""):
             if _item_id:
@@ -77,16 +86,17 @@ class SocYamlGenerator:
                 device_dict = yaml.safe_load(_item["values"][1])
                 regs = self._get_registers(tree, _item_id)
                 interrupts = self._get_interrupts(tree, _item_id)
+                deriveds = self._get_derived(tree, _item_id)
                 _device = device_dict
-                del _device["Type"]
-                del _device["Name"]
+
                 if len(regs):
                     _device["registers"] = regs
                 if len(interrupts):
                     _device["interrupts"] = interrupts
+                if len(deriveds):
+                    _device["deriveds"] = deriveds
 
-                name = _item["text"]
-                devices[name] = _device
+                devices.append(_device)
 
         self.rawdata["devices"] = devices
 
