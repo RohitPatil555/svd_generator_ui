@@ -1,6 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter.filedialog import askopenfilename
+from tkinter.filedialog import asksaveasfile
+import yaml
 
 from .tk_popup import GenericPopUp, SelectAction
 from .svd_template import SvdTemplates
@@ -38,6 +41,9 @@ class App:
 
         self.collapse_button = ttk.Button(self.button_frame, text="Collapse All", command=self.collapse_all)
         self.collapse_button.pack(side=tk.LEFT, padx=5)
+
+        self.load_button = ttk.Button(self.button_frame, text="Load", command=self.load_file)
+        self.load_button.pack(side=tk.LEFT, padx=5)
 
         self.save_button = ttk.Button(self.button_frame, text="Save", command=self.save_tree)
         self.save_button.pack(side=tk.LEFT, padx=5)
@@ -206,13 +212,78 @@ class App:
             self.tree.item(item, open=False)
             self.collapse_all_recursively(item)
 
+    def load_fields_tree(self, _parent, _fields):
+        for _f in _fields:
+            self.tree.insert(_parent, tk.END, text=_f["Name"], values=("Field", _f))
+
+    def load_interrupts_tree(self, _parent, _intrs):
+        for intr in _intrs:
+            self.tree.insert(_parent, tk.END, text=intr["Name"], values=("Interrupt", intr))
+
+    def load_register_tree(self, _parent, _regs):
+        for reg in _regs:
+            _fields = None
+            if "fields" in reg:
+                _fields = reg["fields"]
+                del reg["fields"]
+
+            reg_parent = self.tree.insert(_parent, tk.END, text=reg["Name"], values=("Register", reg))
+            if _fields:
+                self.load_fields_tree(reg_parent, _fields)
+
+    def load_deriveds_tree(self, _parent, _derives):
+        for _dr in _derives:
+            intrs = None
+            if "interrupts" in _dr:
+                intrs = _dr["interrupts"]
+                del _dr["interrupts"]
+
+            dr_parent = self.tree.insert(_parent, tk.END, text=_dr["Name"], values=("Derived", _dr))
+            if intrs:
+                self.load_interrupts_tree(dr_parent, intrs)
+
+    def load_tree(self, yaml_data):
+        parent = None
+        for _dev in yaml_data["devices"]:
+            regs = None
+            intrs = None
+            _deriveds = None
+            if "registers" in _dev:
+                regs = _dev["registers"]
+                del _dev["registers"]
+            if "interrupts" in _dev:
+                intrs = _dev["interrupts"]
+                del _dev["interrupts"]
+            if "deriveds" in _dev:
+                _deriveds = _dev["deriveds"]
+                del _dev["deriveds"]
+
+            parent = self.tree.insert("", tk.END, text=_dev["Name"], values=("Device", _dev))
+            if regs:
+                self.load_register_tree(parent, regs)
+            if intrs:
+                self.load_interrupts_tree(parent, intrs)
+            if _deriveds:
+                self.load_deriveds_tree(parent, _deriveds)
+
+    def load_file(self):
+        filename = askopenfilename(filetypes=(("Yaml files","*.yaml"),("All files","*.*")))
+        print(filename)
+        yaml_data = None
+        with open(filename, 'r') as stream:
+            yaml_data = yaml.safe_load(stream)
+
+        self.load_tree(yaml_data)
+
     def save_tree(self):
         if self.soc_gen:
             del self.soc_gen
         self.soc_gen = SocYamlGenerator("ARM-M7")
         self.soc_gen.generate(self.tree)
         print(self.soc_gen.get_rawdata())
-        self.soc_gen.save_file("test_soc.yaml")
+        filepath = asksaveasfile(mode="w", defaultextension=".yaml")
+        print("write : %s\n"%(filepath))
+        self.soc_gen.save_file(filepath)
 
     def export_svd(self):
         if self.soc_gen:

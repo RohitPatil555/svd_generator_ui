@@ -100,9 +100,8 @@ class SocYamlGenerator:
 
         self.rawdata["devices"] = devices
 
-    def save_file(self, filepath):
-        with open(filepath, 'w') as outfile:
-            yaml.dump(self.rawdata, outfile,default_flow_style=False,default_style=None)
+    def save_file(self, outfile):
+        yaml.dump(self.rawdata, outfile,default_flow_style=False,default_style=None)
 
     def get_rawdata(self):
         return self.rawdata
